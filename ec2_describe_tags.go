@@ -36,6 +36,7 @@ func main() {
 	var instanceID = os.Getenv("EC2_INSTANCE_ID")
 	var pdelim = "\n"
 	var kvdelim = "="
+	var rrune = "_"
 	var queryMetadata = false
 
 	flag.StringVar(&awsAccessKey, "access_key", awsAccessKey, "AWS Access Key")
@@ -44,6 +45,7 @@ func main() {
 	flag.StringVar(&instanceID, "instance_id", instanceID, "EC2 instance id")
 	flag.StringVar(&pdelim, "p_delim", pdelim, "delimiter between key-value pairs")
 	flag.StringVar(&kvdelim, "kv_delim", kvdelim, "delimiter between key and value")
+	flag.StringVar(&rrune, "r_rune", rrune, "replacement rune if p_delim exists in key or value returned")
 	flag.BoolVar(&queryMetadata, "query_meta", queryMetadata, "query metadata service for instance_id and region")
 
 	flag.Parse()
@@ -55,7 +57,7 @@ func main() {
 			os.Exit(1)
 		}
 		sz := len(resp)
-		region = resp[:sz-1]
+		region = resp[:sz - 1]
 	}
 
 	if queryMetadata && instanceID == "" {
@@ -91,12 +93,14 @@ func main() {
 	if len(resp.Reservations) == 0 {
 		os.Exit(1)
 	}
+
 	for idx := range resp.Reservations {
 		for _, inst := range resp.Reservations[idx].Instances {
 			// https: //godoc.org/github.com/awslabs/aws-sdk-go/service/ec2#Instance
 			s := []string{}
+			r := strings.NewReplacer(pdelim, rrune)
 			for _, tag := range inst.Tags {
-				s = append(s, *tag.Key+kvdelim+*tag.Value)
+				s = append(s, r.Replace(*tag.Key)+kvdelim+r.Replace(*tag.Value))
 			}
 			fmt.Println(strings.Join(s, pdelim))
 		}
